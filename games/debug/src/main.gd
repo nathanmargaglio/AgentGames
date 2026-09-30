@@ -676,7 +676,7 @@ func _process(delta: float) -> void:
 	debug_tick += delta
 	if OS.has_feature("web") and debug_tick > 0.25:
 		debug_tick = 0
-		var state := {"mode":mode,"wave":wave,"score":score,"best":best,"bugs":bugs.size(),"remaining":remaining,"power":power,"reach":reach,"interval":interval,"position":[player.position.x,player.position.y,player.position.z],"rotation":[player.rotation.y,camera.rotation.x],"joypads":Input.get_connected_joypads(),"a_pressed":Input.is_joy_button_pressed(0,JOY_BUTTON_A),"role":coop.role,"connected":coop.online,"run":run_id,"kills":team_kills,"teammate":vec(teammate.position) if teammate != null else [],"bug_state":bug_snapshot()}
+		var state := {"mode":mode,"wave":wave,"score":score,"best":best,"bugs":bugs.size(),"remaining":remaining,"power":power,"reach":reach,"interval":interval,"position":[player.position.x,player.position.y,player.position.z],"rotation":[player.rotation.y,camera.rotation.x],"joypads":Input.get_connected_joypads(),"a_pressed":Input.is_joy_button_pressed(0,JOY_BUTTON_A),"role":coop.role,"connected":coop.online,"network":coop.network_mode,"run":run_id,"kills":team_kills,"teammate":vec(teammate.position) if teammate != null else [],"bug_state":bug_snapshot()}
 		JavaScriptBridge.eval("window.agentgamesState=" + JSON.stringify(state),true)
 
 func load_best() -> void:
@@ -692,18 +692,20 @@ func store_best() -> void:
 		if file:
 			file.store_string(JSON.stringify({"best":best}))
 
-func open_coop(kind: String) -> void:
+func open_coop(kind: String, network: String = "") -> void:
+	if network.is_empty():
+		network = coop.network_mode
 	mode = "lobby"
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	menu.hide()
 	hud.hide()
 	if lobby_bridge != null:
 		lobby_bridge.show(kind)
-	coop.begin(kind)
+	coop.begin(kind,network)
 
 func refresh_pairing() -> void:
 	if lobby_bridge != null and mode == "lobby":
-		lobby_bridge.update(JSON.stringify({"role":coop.role,"code":coop.code,"addresses":coop.addresses,"notice":coop.notice,"connected":coop.online,"ready":agent_ready if coop.role == "guest" else peer_ready,"failed":coop.peer == null}))
+		lobby_bridge.update(JSON.stringify({"role":coop.role,"code":coop.code,"addresses":coop.addresses,"notice":coop.notice,"connected":coop.online,"ready":agent_ready if coop.role == "guest" else peer_ready,"failed":coop.failed,"network":coop.network_mode,"received_invitation":coop.remote_applied,"started":coop.peer != null}))
 
 func leave_coop() -> void:
 	if coop != null:
@@ -733,8 +735,14 @@ func coop_disconnected(reason: String) -> void:
 	if teammate != null:
 		teammate.hide()
 	clear_menu("CO-OP SESSION STOPPED","Disconnected.",reason + "\nNo gameplay relay is configured. Both players can create a fresh invitation.")
-	button("Retry pairing",func(): var kind: String = coop.role; leave_coop(); open_coop(kind),true).grab_focus()
+	button("Retry pairing",retry_coop,true).grab_focus()
 	button("Back to briefing",show_title)
+
+func retry_coop() -> void:
+	var kind: String = coop.role
+	var network: String = coop.network_mode
+	leave_coop()
+	open_coop(kind,network)
 
 func create_teammate() -> void:
 	teammate = CharacterBody3D.new()
@@ -783,6 +791,13 @@ func process_coop(delta: float) -> void:
 				for command in commands:
 					match command.get("type",""):
 						"host", "guest": open_coop(command.type)
+						"network":
+							if mode == "lobby" and coop.role == "host" and not coop.online and command.get("network") in ["auto","lan"]:
+								leave_coop()
+								open_coop("host",command.network)
+						"invite":
+							if mode == "lobby" and coop.role == "host" and not coop.online:
+								coop.create_invitation()
 						"code": coop.accept_code(str(command.get("code","")))
 						"ready":
 							if coop.role == "guest" and coop.online:

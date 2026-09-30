@@ -15,7 +15,7 @@ python3 tools/serve.py --port 8765
 # Add --lan for local HTTPS + IP links to test with a second computer.
 ```
 
-Open `http://localhost:8765/AgentGames/`. Debug is a solo or two-player co-op first-person swatter: clear timed bug waves, select upgrades, and chase your best score. For co-op, host a session, share the invitation link, paste the guest’s answer, then start together. Use WASD/mouse/click or Xbox sticks/RT; Esc/Start pauses.
+Open `http://localhost:8765/AgentGames/`. Debug is a solo or two-player co-op first-person swatter: clear timed bug waves, select upgrades, and chase your best score. For co-op, host a session, choose Automatic or Same network / LAN, create and share the invitation link, paste the guest’s answer, then start together. LAN mode uses local addresses without a public discovery service; the guest inherits the selected mode. Use WASD/mouse/click or Xbox sticks/RT; Esc/Start pauses.
 
 Finished updates are published to GitHub Pages by default unless the user asks to keep them local. Every published update bumps AgentGames, and changed games receive their own version bumps. Histories and versions appear in the portal. Builds happen locally **before** committing and pushing; GitHub Pages serves `main` at `/` without a game build action. Local servers are only development/test tools; published co-op uses a direct connection between the two browsers.
 

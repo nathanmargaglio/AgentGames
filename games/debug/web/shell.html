@@ -141,6 +141,9 @@ $GODOT_HEAD_INCLUDE
 #coop-panel .row { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0 }
 #coop-panel .small { font-size:13px }
 #coop-addresses { font:12px/1.5 monospace; white-space:pre-wrap; overflow-wrap:anywhere; color:#b1c7be }
+#coop-panel fieldset { border:1px solid #78948a; border-radius:8px; margin:16px 0; padding:8px 12px }
+#coop-panel legend { color:#c9ee83; font-size:14px; padding:0 5px }
+#coop-panel button[aria-pressed="true"] { background:#c9ee83; color:#10201f }
 #coop-panel details { margin:16px 0 }
 #coop-panel summary { cursor:pointer; color:#c9ee83 }
 `;
@@ -154,6 +157,12 @@ $GODOT_HEAD_INCLUDE
     <h1 id="coop-heading">Connect your agents.</h1>
     <p id="coop-instructions"></p>
     <p id="coop-status" role="status" aria-live="polite"></p>
+    <fieldset id="coop-network-group"><legend>Connection mode</legend>
+      <div class="row"><button id="coop-auto" aria-pressed="true">Automatic</button><button id="coop-lan" aria-pressed="false">Same network / LAN</button></div>
+      <p class="small">Choose before sharing. Changing mode discards the old invitation.</p>
+      <button class="primary" id="coop-invite">Create invitation →</button>
+    </fieldset>
+    <p id="coop-network-note" class="small"></p>
     <div id="coop-output-group">
       <label for="coop-output" id="coop-output-label">Your invitation code</label>
       <textarea id="coop-output" readonly spellcheck="false" aria-describedby="coop-privacy"></textarea>
@@ -167,8 +176,8 @@ $GODOT_HEAD_INCLUDE
     <p id="coop-copy-note" class="small" role="status"></p>
     <details><summary>Network addresses & connection help</summary>
       <pre id="coop-addresses">Gathering network addresses…</pre>
-      <p class="small">Addresses are already included in the codes; there is no IP or port to enter. Browsers may hide local IPs as .local names. A public STUN service helps discover addresses; gameplay travels directly between you.</p>
-      <p class="small">Start with two computers on the same Wi-Fi. Both can open the game from the Game Portal. Some firewalls or routers block direct connections; try another network if pairing times out. This test has no TURN relay.</p>
+      <p class="small">Addresses are already included in the codes; there is no IP or port to enter. Browsers may hide local IPs as .local names. Automatic mode uses public address discovery and also supports local connections. Same network / LAN uses local addresses without a public discovery service. Gameplay travels directly between you.</p>
+      <p class="small">Start with two computers on the same Wi-Fi. Both can open the game from the Game Portal. Use the main Wi-Fi or Ethernet. Guest Wi-Fi/client isolation, a VPN, or a firewall can block local peers; connection modes cannot bypass those network restrictions. This test has no TURN relay.</p>
     </details>
     <p class="small" id="coop-privacy">Share codes privately with your teammate; they can include network addresses. Keep both game windows open. The host starts the run and picks shared upgrades. Either agent can pause the team clock.</p>
     <div class="row"><button class="primary" id="coop-ready" hidden>Ready to play →</button><button class="primary" id="coop-start" hidden>Start co-op run →</button><button id="coop-retry" hidden>Create a fresh session</button><button id="coop-leave">Back to briefing</button></div>
@@ -176,7 +185,7 @@ $GODOT_HEAD_INCLUDE
   </div>`;
   document.body.append(lobby);
   const el = id => document.getElementById(id);
-  let role = 'host', code = '', commands = [], invitation = '';
+  let role = 'host', network = 'auto', code = '', commands = [], invitation = '';
   const enqueue = command => { if (commands.length < 8) commands.push(command); };
   function focusLost() {
     if (['playing','paused'].includes(window.agentgamesState?.mode)) enqueue({type:'focus_lost'});
@@ -205,7 +214,7 @@ $GODOT_HEAD_INCLUDE
       role = kind; code = ''; lobby.hidden = false;
       el('coop-heading').textContent = kind === 'host' ? 'Host a co-op session.' : 'Join your teammate.';
       el('coop-instructions').textContent = kind === 'host'
-        ? '1. Send your invitation link or code to your teammate. 2. Paste their answer below. 3. Start when both agents are connected.'
+        ? '1. Choose a mode and create an invitation. 2. Send the link or code to your teammate. 3. Paste their answer. 4. Start when both agents are ready.'
         : '1. Paste the host’s invitation below, or open their link. 2. Send your answer code back to them. 3. Wait for the host to start.';
       el('coop-output-label').textContent = kind === 'host' ? '1 / Your invitation code' : '2 / Your answer code — send this back to the host';
       el('coop-input-label').textContent = kind === 'host' ? '2 / Paste the guest’s answer' : '1 / Paste the host’s invitation code or link';
@@ -215,26 +224,40 @@ $GODOT_HEAD_INCLUDE
       el('coop-output-group').hidden = false;
       el('coop-input-group').hidden = false;
       el('coop-copy-link').hidden = kind !== 'host';
+      el('coop-network-group').hidden = kind !== 'host';
       el('coop-start').hidden = true;
       el('coop-ready').hidden = true;
       el('coop-retry').hidden = true;
       el('coop-connect').disabled = false;
-      el('coop-connect').focus();
+      (kind === 'host' ? el('coop-invite') : el('coop-connect')).focus();
+      // The press that opened this screen must be released before it activates a control.
+      const pad = [...(navigator.getGamepads?.() || [])].find(p => p?.connected);
+      padNeedsRelease = !!pad && (pad.buttons[0]?.pressed || pad.buttons[1]?.pressed || pad.buttons.slice(12,16).some(button=>button.pressed) || Math.abs(pad.axes[1])>.6);
+      lastA = !!pad?.buttons[0]?.pressed; lastB = !!pad?.buttons[1]?.pressed;
+      lastDirection = 0; nextMove = 0;
     },
     hide() { lobby.hidden = true; el('canvas').focus(); },
     update(raw) {
-      const state = JSON.parse(raw); code = state.code;
+      const state = JSON.parse(raw); code = state.code; network = state.network;
       el('coop-output').value = code;
       el('coop-status').textContent = state.notice;
       el('coop-addresses').textContent = state.addresses;
+      el('coop-network-group').hidden = role !== 'host' || state.connected;
+      el('coop-auto').setAttribute('aria-pressed', String(network === 'auto'));
+      el('coop-lan').setAttribute('aria-pressed', String(network === 'lan'));
+      el('coop-network-note').textContent = role === 'guest' && !state.received_invitation
+        ? 'The host’s invitation will set the connection mode automatically.'
+        : (network === 'lan' ? 'Same network / LAN · Local addresses only. No public discovery service. Both devices must share a LAN.'
+          : 'Automatic · Same network or internet. Public address discovery enabled.') + (role === 'guest' ? ' Mode inherited from the host.' : '');
       el('coop-copy').disabled = !code;
       el('coop-copy-link').disabled = !code;
       el('coop-start').hidden = !state.connected || role !== 'host';
       el('coop-start').disabled = !state.ready;
       el('coop-ready').hidden = !state.connected || role !== 'guest' || state.ready;
       el('coop-retry').hidden = !state.failed;
-      el('coop-input-group').hidden = state.connected;
-      el('coop-output-group').hidden = state.connected;
+      el('coop-input-group').hidden = state.connected || (role === 'host' && !state.started);
+      el('coop-output-group').hidden = state.connected || !state.started;
+      el('coop-invite').textContent = state.started ? 'Create a fresh invitation' : 'Create invitation →';
       if (state.connected) {
         el('coop-copy-note').textContent = role === 'host' ? (state.ready ? 'Your teammate is ready. Start the run.' : 'Waiting for your teammate to press Ready to play.') : (state.ready ? 'Ready. Waiting for the host to start the run.' : 'Press Ready to play to enable audio and join the run.');
         (role === 'host' ? (state.ready ? el('coop-start') : el('coop-leave')) : (state.ready ? el('coop-leave') : el('coop-ready'))).focus();
@@ -259,12 +282,16 @@ $GODOT_HEAD_INCLUDE
     try { enqueue({type:'code', code:parseCode(el('coop-input').value)}); }
     catch (error) { el('coop-copy-note').textContent = error.message; }
   };
+  for (const [id,mode] of [['coop-auto','auto'],['coop-lan','lan']]) {
+    el(id).onclick = () => { if (network !== mode) enqueue({type:'network',network:mode}); };
+  }
+  el('coop-invite').onclick = () => enqueue({type:'invite'});
   el('coop-ready').onclick = () => enqueue({type:'ready'});
   el('coop-start').onclick = () => enqueue({type:'start'});
   el('coop-retry').onclick = () => enqueue({type:role});
   el('coop-leave').onclick = () => enqueue({type:'leave'});
   // Navigate native pairing controls using the same standard Xbox gamepad as Godot.
-  let lastA = false, lastB = false, nextMove = 0;
+  let lastA = false, lastB = false, lastDirection = 0, nextMove = 0, padNeedsRelease = false;
   setInterval(() => {
     const pad = [...(navigator.getGamepads?.() || [])].find(p => p?.connected);
     if (!pad) return;
@@ -273,10 +300,15 @@ $GODOT_HEAD_INCLUDE
       const controls = [...lobby.querySelectorAll('button,textarea,summary')].filter(e => !e.disabled && e.getClientRects().length);
       const direction = pad.buttons[13]?.pressed || pad.buttons[15]?.pressed || pad.axes[1] > .6 ? 1
         : pad.buttons[12]?.pressed || pad.buttons[14]?.pressed || pad.axes[1] < -.6 ? -1 : 0;
-      if (direction && performance.now() > nextMove) {
-        let index = controls.indexOf(document.activeElement);
-        controls[(index + direction + controls.length) % controls.length]?.focus(); nextMove = performance.now() + 250;
+      if (padNeedsRelease) {
+        padNeedsRelease = !!(a || b || direction); lastA = a; lastB = b; lastDirection = direction; return;
       }
+      if (direction && (direction !== lastDirection || performance.now() > nextMove)) {
+        let index = controls.indexOf(document.activeElement);
+        controls[(index + direction + controls.length) % controls.length]?.focus();
+        nextMove = performance.now() + (direction !== lastDirection ? 450 : 150);
+      }
+      lastDirection = direction;
       if (a && !lastA) document.activeElement?.click();
       if (b && !lastB) enqueue({type:'leave'});
     }

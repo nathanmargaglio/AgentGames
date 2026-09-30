@@ -1,5 +1,10 @@
 [
   {
+    "version": "0.3.0",
+    "datetime": "2026-09-30T23:24:55.218700+00:00",
+    "description": "Add Same network / LAN co-op mode with no public discovery, automatic guest configuration, and network-specific connection help"
+  },
+  {
     "version": "0.2.0",
     "datetime": "2026-09-30T22:41:03.145153+00:00",
     "description": "Add two-player Debug co-op with direct WebRTC pairing and publish finished updates to Pages by default"

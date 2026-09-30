@@ -103,15 +103,34 @@ try {
   // Xbox also selects Host co-op and navigates/cancels the native pairing controls.
   async function pulsePad(index) {
     await padPage.evaluate(index=>window.padButton(index,true),index); await delay(180);
-    await padPage.evaluate(index=>window.padButton(index,false),index); await delay(180);
+    await padPage.evaluate(index=>window.padButton(index,false),index); await delay(250);
   }
   await pulsePad(9); await padPage.waitForFunction(()=>window.agentgamesState?.mode==='paused');
   await pulsePad(13); await pulsePad(13); await pulsePad(0);
   await padPage.waitForFunction(()=>window.agentgamesState?.mode==='over');
   await pulsePad(13); await pulsePad(0);
   await padPage.waitForFunction(()=>window.agentgamesState?.mode==='title');
-  await pulsePad(13); await pulsePad(0);
+  await pulsePad(13);
+  await padPage.evaluate(()=>window.padButton(0,true));
+  await delay(500);
+  await padPage.evaluate(()=>window.padButton(0,false));
   await padPage.waitForFunction(()=>window.agentgamesState?.mode==='lobby');
+  await delay(250);
+  assert.match(await padPage.locator('#coop-status').textContent(),/Choose a connection mode/,'Held Xbox A does not also create an invitation');
+  // From Create invitation, Xbox up selects the LAN option, and A applies it.
+  await padPage.waitForFunction(()=>document.activeElement.id==='coop-invite');
+  await pulsePad(12);
+  try { await padPage.waitForFunction(()=>document.activeElement.id==='coop-lan',null,{timeout:5000}); }
+  catch(error) {
+    console.log('Xbox lobby navigation failure',await padPage.evaluate(()=>({focus:document.activeElement.id,buttons:window.testPad.buttons.map(b=>b.pressed),axes:window.testPad.axes})));
+    await padPage.screenshot({path:'artifacts/debug-controller-failure.png'});throw error;
+  }
+  await pulsePad(0);
+  await padPage.waitForFunction(()=>window.agentgamesState?.network==='lan');
+  assert.match(await padPage.locator('#coop-status').textContent(),/Choose a connection mode/,'Selecting LAN requires a separate press to create the invitation');
+  await pulsePad(0);
+  await padPage.waitForFunction(()=>document.getElementById('coop-output')?.value.length>0);
+  assert.equal(JSON.parse(await padPage.locator('#coop-output').inputValue()).network,'lan');
   const beforeFocus = await padPage.evaluate(()=>document.activeElement.id);
   await pulsePad(13);
   assert.notEqual(await padPage.evaluate(()=>document.activeElement.id),beforeFocus,'Xbox navigates pairing controls');
@@ -119,6 +138,7 @@ try {
   console.log('Browser: Xbox co-op menus pass');
   await padContext.close();
   await testCoop(browser,base,errors);
+  await testCoop(browser,base,errors,{network:"lan"});
   assert.deepEqual(errors,[],`Browser errors: ${errors.join('\n')}`);
-  console.log('Browser checks: PASS (portal, mobile layout, histories, pagination, WebGL, keyboard/mouse, swatting, pause, emulated Xbox menu/sticks/RT, two-player WebRTC co-op).');
+  console.log('Browser checks: PASS (portal, mobile layout, histories, pagination, WebGL, keyboard/mouse, swatting, pause, emulated Xbox menu/sticks/RT, two-player Automatic + LAN WebRTC co-op).');
 } finally {await browser?.close();server?.kill();}

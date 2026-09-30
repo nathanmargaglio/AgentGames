@@ -8,6 +8,8 @@ signal pairing_changed
 const MAX_CODE := 32768
 const MAX_PACKET := 24000
 var role: String = "solo"
+var network_mode: String = "auto"
+var failed: bool = false
 var peer: WebRTCPeerConnection
 var channel: WebRTCDataChannel
 var online: bool = false
@@ -22,26 +24,45 @@ var remote_applied: bool = false
 var rate_time: float = 0
 var packets_this_second: int = 0
 
-func begin(kind: String) -> void:
+func begin(kind: String, network: String = "auto") -> void:
 	close()
 	role = kind
+	network_mode = network if network in ["auto","lan"] else "auto"
 	if not OS.has_feature("web"):
 		fail("Co-op is available in the browser build. Open Debug from the Game Portal.")
 		return
-	peer = WebRTCPeerConnection.new()
-	if peer.initialize({"iceServers":[{"urls":["stun:stun.l.google.com:19302"]}]}) != OK:
-		fail("Could not initialize WebRTC. Try a current browser.")
+	notice = "Choose a connection mode, then create an invitation." if role == "host" else "Paste the host's invitation or open their invitation link."
+	addresses = "Create an invitation to gather addresses." if role == "host" else "The host's invitation will choose the connection mode."
+	pairing_changed.emit()
+
+func create_invitation() -> void:
+	if role != "host" or online or failed:
 		return
+	begin("host",network_mode)
+	if not create_peer():
+		return
+	notice = "Gathering invitation…"
+	addresses = "Gathering network addresses…"
+	if peer.create_offer() != OK:
+		fail("Could not create an invitation. Retry hosting.")
+		return
+	pairing_changed.emit()
+
+func ice_configuration() -> Dictionary:
+	return {"iceServers":[] if network_mode == "lan" else [{"urls":["stun:stun.l.google.com:19302"]}]}
+
+func create_peer() -> bool:
+	peer = WebRTCPeerConnection.new()
+	if peer.initialize(ice_configuration()) != OK:
+		fail("Could not initialize WebRTC. Try a current browser.")
+		return false
 	peer.session_description_created.connect(on_description)
 	peer.ice_candidate_created.connect(on_candidate)
 	channel = peer.create_data_channel("debug-coop",{"negotiated":true,"id":1,"ordered":true})
 	if channel == null:
 		fail("Could not create the co-op data channel.")
-		return
-	notice = "Gathering invitation…" if role == "host" else "Paste the host's invitation or open their invitation link."
-	if role == "host" and peer.create_offer() != OK:
-		fail("Could not create an invitation. Retry hosting.")
-	pairing_changed.emit()
+		return false
+	return true
 
 func on_description(kind: String, sdp: String) -> void:
 	description = {"type":kind,"sdp":sdp}
@@ -53,7 +74,7 @@ func on_candidate(media: String, index: int, candidate: String) -> void:
 		candidates.append({"media":media,"index":index,"candidate":candidate})
 
 func accept_code(raw: String) -> void:
-	if peer == null or remote_applied:
+	if role == "solo" or failed or remote_applied:
 		return
 	var parsed := JSON.new()
 	if raw.length() > MAX_CODE or parsed.parse(raw.strip_edges()) != OK:
@@ -66,11 +87,24 @@ func accept_code(raw: String) -> void:
 		notice = "Expected a Debug %s code. Ask the other player to copy it again." % expected
 		pairing_changed.emit()
 		return
+	var network = data.get("network","auto")
+	if not (network is String) or network not in ["auto","lan"] or (role == "host" and network != network_mode):
+		notice = "Connection modes do not match. Ask the guest to use your current invitation and return a fresh answer."
+		pairing_changed.emit()
+		return
 	for candidate in data.candidates:
 		if not (candidate is Dictionary) or not (candidate.get("media") is String) or not (candidate.get("index") is float or candidate.get("index") is int) or not (candidate.get("candidate") is String):
 			notice = "Invalid network address in the code. Copy it again."
 			pairing_changed.emit()
 			return
+	if role == "guest":
+		network_mode = network
+		if not create_peer():
+			return
+	elif peer == null:
+		notice = "Create an invitation before using the guest's answer."
+		pairing_changed.emit()
+		return
 	if peer.set_remote_description(expected,data.sdp) != OK:
 		fail("Could not read the connection description. Create a fresh session.")
 		return
@@ -90,7 +124,7 @@ func _process(delta: float) -> void:
 	if remote_applied:
 		connecting_age += delta
 	if code.is_empty() and not description.is_empty() and peer.get_gathering_state() == WebRTCPeerConnection.GATHERING_STATE_COMPLETE:
-		code = JSON.stringify({"game":"debug-coop-1","type":description.type,"sdp":description.sdp,"candidates":candidates})
+		code = JSON.stringify({"game":"debug-coop-1","network":network_mode,"type":description.type,"sdp":description.sdp,"candidates":candidates})
 		var found: Array[String] = []
 		for candidate in candidates:
 			var parts: PackedStringArray = candidate.candidate.split(" ")
@@ -103,7 +137,7 @@ func _process(delta: float) -> void:
 		pairing_changed.emit()
 	var state := peer.get_connection_state()
 	if state in [WebRTCPeerConnection.STATE_FAILED,WebRTCPeerConnection.STATE_DISCONNECTED,WebRTCPeerConnection.STATE_CLOSED]:
-		fail("Connection lost or blocked. Try pairing again on the same Wi-Fi, or another network.")
+		fail(connection_help("Connection lost or blocked."))
 		return
 	if channel == null:
 		return
@@ -130,7 +164,12 @@ func _process(delta: float) -> void:
 	elif online:
 		fail("Your teammate disconnected. The run has stopped.")
 	elif (remote_applied and connecting_age > 60) or (code.is_empty() and age > 25 and role == "host"):
-		fail("Connection timed out. Check that the host pasted the answer. Try the same Wi-Fi or another network; some routers require a relay.")
+		fail(connection_help("Connection timed out. Check that the host pasted the answer."))
+
+func connection_help(reason: String) -> String:
+	if network_mode == "lan":
+		return reason + " Both devices must be on the same LAN. Guest Wi-Fi/client isolation, a VPN, or a firewall can block peer connections. Retry on the main Wi-Fi or Ethernet."
+	return reason + " On the same LAN, try Same network / LAN mode. Otherwise try another network; some routers require a relay."
 
 func send(data: Dictionary) -> void:
 	if online and channel != null and channel.get_buffered_amount() < 96000:
@@ -138,12 +177,14 @@ func send(data: Dictionary) -> void:
 
 func fail(reason: String) -> void:
 	close(false)
+	failed = true
 	notice = reason
 	pairing_changed.emit()
 	disconnected.emit(reason)
 
 func close(reset_role: bool = true) -> void:
 	online = false
+	failed = false
 	if channel != null:
 		channel.close()
 	channel = null

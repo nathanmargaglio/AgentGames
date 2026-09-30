@@ -77,6 +77,14 @@ func test_game() -> void:
 		for event in InputMap.action_get_events(name_):
 			if event is InputEventJoypadButton or event is InputEventJoypadMotion:has_joy = true
 		expect(has_joy,"Controller action missing: "+name_)
+	game.coop.network_mode = "lan"
+	expect(game.coop.ice_configuration().iceServers.is_empty(),"LAN works without public address-discovery services")
+	expect("isolation" in game.coop.connection_help("Test"),"LAN failures explain local network restrictions")
+	game.coop.role = "host"
+	game.coop.accept_code(JSON.stringify({"game":"debug-coop-1","type":"answer","sdp":"test","candidates":[],"network":"auto"}))
+	expect("do not match" in game.coop.notice and not game.coop.remote_applied,"Mismatched answers cannot apply to a LAN invitation")
+	game.coop.network_mode = "auto"
+	expect(not game.coop.ice_configuration().iceServers.is_empty(),"Automatic retains public address discovery")
 	# Headless authority checks exercise the co-op rules without a native WebRTC extension.
 	game.set_process(false)
 	game.coop.role = "host"

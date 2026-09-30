@@ -19,11 +19,24 @@ async function aimAndSwat(page) {
   },{move:Math.abs(error)<.4 && Math.hypot(dx,dz)>2 ? -.7 : 0,x:clamp(-error*2.5),y:clamp(-(pitch-game.rotation[1])*2.5)});
 }
 const waitMode = (page,mode) => page.waitForFunction(mode => window.agentgamesState?.mode === mode,mode,{timeout:60000});
-export async function testCoop(browser,base,errors,{ignoreHTTPSErrors=false}={}) {
+export async function testCoop(browser,base,errors,{ignoreHTTPSErrors=false,network="auto"}={}) {
   // Separate browser windows allow both game canvases to stay focused during co-op.
   const guestBrowser = await chromium.launch({channel:'chromium',headless:true,args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
   const hostContext = await browser.newContext({viewport:{width:1440,height:900},ignoreHTTPSErrors,permissions:['clipboard-read','clipboard-write']});
   const guestContext = await guestBrowser.newContext({viewport:{width:1440,height:900},ignoreHTTPSErrors,permissions:['clipboard-read','clipboard-write']});
+  for (const context of [hostContext,guestContext]) {
+    await context.addInitScript(({lan})=>{
+      const NativeConnection = window.RTCPeerConnection;
+      window.rtcConfigurations = [];
+      window.RTCPeerConnection = class extends NativeConnection {
+        constructor(configuration={}) {
+          if (lan && configuration.iceServers?.length) throw new Error('LAN attempted public address discovery');
+          super(configuration);
+          window.rtcConfigurations.push(JSON.parse(JSON.stringify(configuration)));
+        }
+      };
+    },{lan:network==='lan'});
+  }
   const host = await hostContext.newPage(), guest = await guestContext.newPage();
   try {
     for (const page of [host,guest]) {
@@ -31,14 +44,20 @@ export async function testCoop(browser,base,errors,{ignoreHTTPSErrors=false}={})
       page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
     }
     const url = new URL('games/debug/play/',base).href;
-    console.log('Browser: co-op pairing');
+    console.log(`Browser: co-op pairing (${network})`);
     await host.goto(url); await waitMode(host,'title');
     await host.locator('#canvas').focus();
     await host.keyboard.press('ArrowDown'); await host.keyboard.press('Enter');
     await waitMode(host,'lobby');
+    assert.equal(await host.evaluate(()=>window.rtcConfigurations.length),0,'Host chooses a mode before address discovery');
+    if (network === 'lan') await host.locator('#coop-lan').click();
+    await host.waitForFunction(network=>window.agentgamesState.network===network,network);
+    await host.screenshot({path:`artifacts/debug-coop-${network}-setup.png`});
+    await host.locator('#coop-invite').click();
     await host.waitForFunction(()=>document.getElementById('coop-output')?.value.length>0,null,{timeout:30000});
     const offer = await host.locator('#coop-output').inputValue();
     assert.equal(JSON.parse(offer).type,'offer');
+    assert.equal(JSON.parse(offer).network,network);
     assert.ok(JSON.parse(offer).candidates.length>0,'Invitation bundles ICE network addresses');
     await host.locator('#coop-copy-link').click();
     const link = await host.evaluate(()=>navigator.clipboard.readText());
@@ -49,9 +68,22 @@ export async function testCoop(browser,base,errors,{ignoreHTTPSErrors=false}={})
     await guest.locator('#coop-copy').click();
     const answer = await guest.evaluate(()=>navigator.clipboard.readText());
     assert.equal(JSON.parse(answer).type,'answer');
+    assert.equal(JSON.parse(answer).network,network,'Guest inherits the invitation mode');
+    for (const page of [host,guest]) {
+      const configurations=await page.evaluate(()=>window.rtcConfigurations);
+      assert.ok(configurations.length>0);
+      if (network==='lan') assert.ok(configurations.every(config=>!config.iceServers?.length),'LAN initializes no public discovery servers');
+      else assert.ok(configurations.some(config=>config.iceServers?.length),'Automatic retains public address discovery');
+    }
+    if (network==='lan') {
+      for (const code of [offer,answer]) assert.ok(JSON.parse(code).candidates.every(candidate=>candidate.candidate.split(' ')[7]==='host'),'LAN offers only local interface candidates');
+    }
     await host.locator('#coop-input').fill('invalid code');
     await host.locator('#coop-connect').click();
     await host.waitForFunction(()=>document.getElementById('coop-status').textContent.includes('Invalid code'));
+    const mismatched=JSON.parse(answer); mismatched.network=network==='lan'?'auto':'lan';
+    await host.locator('#coop-input').fill(JSON.stringify(mismatched)); await host.locator('#coop-connect').click();
+    await host.waitForFunction(()=>document.getElementById('coop-status').textContent.includes('Connection modes do not match'));
     await host.locator('#coop-input').fill(answer); await host.locator('#coop-connect').click();
     await Promise.all([host,guest].map(page=>page.waitForFunction(()=>window.agentgamesState?.connected,null,{timeout:60000})));
     assert.equal(await host.locator('#coop-start').isDisabled(),true,'Host waits for guest readiness');
@@ -115,11 +147,13 @@ export async function testCoop(browser,base,errors,{ignoreHTTPSErrors=false}={})
     const stopped = (await state(host)).remaining; await delay(500);
     assert.equal((await state(host)).remaining,stopped,'Disconnect stops the run');
     await host.keyboard.press('Enter'); await waitMode(host,'lobby');
+    assert.equal((await state(host)).network,network,'Retry keeps the chosen mode');
+    await host.locator('#coop-invite').click();
     await host.waitForFunction(()=>document.getElementById('coop-output')?.value.length>0,null,{timeout:30000});
     assert.notEqual(await host.locator('#coop-output').inputValue(),offer,'Retry makes a fresh invitation');
     await host.locator('#coop-leave').click(); await waitMode(host,'title');
     assert.equal((await state(host)).role,'solo');
-    console.log('Browser: co-op PASS (private link/code pairing, readiness, both swat, shared waves/upgrades, guest pause, focus pause, disconnect/retry).');
+    console.log(`Browser: co-op ${network} PASS (private link/code pairing, readiness, both swat, shared waves/upgrades, guest pause, focus pause, disconnect/retry).`);
   } catch (error) {
     for (const [name,page] of [['host',host],['guest',guest]]) if (!page.isClosed()) { console.log(name,await state(page)); await page.screenshot({path:`artifacts/debug-coop-failure-${name}.png`}); }
     throw error;

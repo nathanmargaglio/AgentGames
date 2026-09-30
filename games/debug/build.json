@@ -1,17 +1,17 @@
 {
-  "version": "0.2.0",
+  "version": "0.3.0",
   "godot": "4.6.1",
   "asset_generation_sha256": "faa6dbe2933dc980a5350fdc6b5aaec6b3733227f3dbe0018ae942027885f151",
-  "source_sha256": "3e8148880b4f48047f6a1982b7da6f506d6850783170324a791ecc81b82fd832",
-  "built_at": "2026-09-30T22:41:11.413449+00:00",
+  "source_sha256": "16c1545f2e5b4f47d1e33d7d56ed1cec05d3c588cfa0340972fe91395a561a5f",
+  "built_at": "2026-09-30T23:25:03.494907+00:00",
   "files": {
     "index.apple-touch-icon.png": "8ce1a8981f3fe236c4229d70762c0cf2718ff8610b2004ba1f4d41a971f3d01c",
     "index.audio.position.worklet.js": "be33985bc7160d6bf9646f259cd86b259cd67b02ccb297ee5c44f8ac84327bc8",
     "index.audio.worklet.js": "5b476a9c9ce642c0ee4256436d1bc31d9c38f868aca0f9a8e2a57c18d2dec2a3",
-    "index.html": "bc0f8930b0b1e407a60bd5d6702d76ccd42defab0e7197a7a0ba1ff27f4eb089",
+    "index.html": "7445c1ea12011e6298b7e2f7d54c5062ac1f05f8f828d7cf874c27ac9c62e23c",
     "index.icon.png": "9e9216793e9f6a0866dd5f39ea1902578b22d62a6ff81aabd715fefc8508f04c",
     "index.js": "e3f56ee40e6f84371053db06692cfac15e2c8659547b11c6b2dfa1996dabd981",
-    "index.pck": "568eae8591e91048b19e152a5bab3993b23cae973aa45391e696cb9d51fb0d41",
+    "index.pck": "d803dad309609942043759946b1d41641685cab0876cd65afcfd1645f5c1d5e8",
     "index.png": "3cb4495c0b98dfbe4b663cbf2b6836473572339beb66d902367893162a70be0e",
     "index.wasm": "99962b29677e42f3ba0258bd90fdc52ad90295954c4473e816ad02cfe5ff1d4f"
   }

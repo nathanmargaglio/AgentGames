@@ -1,7 +1,7 @@
 {
   "id": "debug",
   "name": "Debug",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "The server has a bug problem. Swat through timed waves solo or with a teammate, pick shared upgrades, and keep the system clean.",
   "genre": "First-person swatter",
   "players": "1\u20132 players",
