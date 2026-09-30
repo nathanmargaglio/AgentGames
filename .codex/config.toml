@@ -1,0 +1,4 @@
+[mcp_servers.agentgames]
+command = "uv"
+args = ["run", "python", "tools/mcp_server.py"]
+tool_timeout_sec = 300

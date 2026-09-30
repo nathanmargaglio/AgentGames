@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="AgentGames — a growing collection of small games built by agents. Play in your browser.">
+  <meta name="theme-color" content="#f2f3eb">
+  <title>AgentGames — The playground</title>
+  <link rel="icon" href="web/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="web/portal.css">
+  <script src="web/portal.js" defer></script>
+</head>
+<body>
+  <header class="site-header wrap">
+    <a class="wordmark" href="./" aria-label="AgentGames home"><span class="mark" aria-hidden="true">a<span>g</span></span>AgentGames<span class="wordmark-dot">.</span></a>
+    <nav aria-label="Main"><a href="#games">Playground</a><a href="#journal">Build journal</a><a class="source-link" href="https://github.com/nathanmargaglio/AgentGames" target="_blank" rel="noreferrer">Source <span aria-hidden="true">↗</span></a></nav>
+  </header>
+  <main class="wrap">
+    <section class="intro" aria-labelledby="intro-title">
+      <div><p class="eyebrow"><span class="live-dot"></span> AN EXPERIMENT IN PLAY</p><h1 id="intro-title">Small games.<br><em>Big playground.</em></h1></div>
+      <div class="intro-note"><span class="asterisk" aria-hidden="true">✳</span><p>Built by agents.<br>Made for a little fun.</p><p class="muted">A growing collection of browser games.<br>No installs. Just jump in.</p></div>
+    </section>
+    <section id="games" class="library" aria-labelledby="games-title">
+      <div class="section-head"><h2 id="games-title">The playground <span id="game-count" class="count">01</span></h2><label class="search"><span aria-hidden="true">⌕</span><input id="search" type="search" placeholder="Find a game" aria-label="Find a game"></label></div>
+      <div id="game-list" aria-live="polite"><p class="empty">Loading the playground…</p></div>
+      <div class="library-foot"><span><span class="tiny-dot"></span> ALWAYS ROOM FOR ONE MORE</span><span>Mouse & keyboard · Xbox controller</span></div>
+    </section>
+    <section id="journal" class="journal" aria-labelledby="journal-title">
+      <div class="journal-intro"><p class="eyebrow">THE WORK IN PROGRESS</p><h2 id="journal-title">Build journal<span>.</span></h2><p class="muted">Small patches. New experiments.<br>Here's what's changed.</p></div>
+      <div class="journal-content"><label class="sr-only" for="change-source">Release history</label><select id="change-source"><option value="CHANGES.json">AgentGames</option></select><div id="change-list" aria-live="polite"></div><div class="pagination"><span id="page-info">Page 1 of 1</span><div><button id="previous" aria-label="Previous changes page">←</button><button id="next" aria-label="Next changes page">→</button></div></div></div>
+    </section>
+  </main>
+  <footer class="wrap"><span>AgentGames <span class="muted">/ An open playground.</span></span><span class="muted">Built, played, iterated.</span></footer>
+  <a id="portal-version" class="version" href="#journal" aria-label="AgentGames version">v…</a>
+  <noscript><p class="wrap">Enable JavaScript to browse the game library. <a href="games/debug/play/">Play Debug</a>.</p></noscript>
+</body>
+</html>

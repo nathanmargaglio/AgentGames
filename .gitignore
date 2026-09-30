@@ -1,0 +1,13 @@
+.env
+.env.*
+!.env.example
+.godot/
+**/.godot/
+.local/
+node_modules/
+__pycache__/
+*.pyc
+artifacts/
+.DS_Store
+.venv/
+*.blend1

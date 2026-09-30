@@ -1,0 +1,9 @@
+# Browser multiplayer defaults
+
+Debug's initial release is solo. Future online games should start with one authoritative host and direct WebRTC data channels between invited browsers. Keep rooms small, synchronize only the state needed for the game, and avoid discovery accounts, matchmaking, and a hosted game server until they solve a concrete need.
+
+Browsers cannot listen for arbitrary incoming TCP/UDP connections. They must exchange WebRTC session descriptions and ICE candidates before connecting. The first implementation can use a manual offer/answer code exchange through an existing chat: host copies an invitation, guest pastes it and returns an answer. Gather ICE candidates before producing each code so a signaling service is unnecessary. A public STUN service can help peers find their public addresses; it does not host gameplay. Use Godot's `WebRTCPeerConnection`, `WebRTCDataChannel`, or `WebRTCMultiplayerPeer` in browser exports. [Godot WebRTC documentation](https://docs.godotengine.org/en/stable/tutorials/networking/webrtc.html).
+
+Some NATs, firewalls, and enterprise networks cannot establish a direct connection. Reliable support for those networks requires a TURN relay, which carries traffic and has a cost. Show a clear connection failure and retry option initially; propose relay hosting and its budget before adding it. Do not promise universal connectivity without a relay. Native headless WebRTC tests require Godot's separate native WebRTC extension, while browser builds include WebRTC support.
+
+Treat guest data as untrusted. The host decides scores, round transitions, upgrades, and valid actions. Use bounded packet sizes and rates; handle disconnects and host departure explicitly. Manual connection codes can contain network addresses, so exchange them privately. GitHub Pages only delivers static client files and will not become a signaling or gameplay server.

@@ -1,0 +1,24 @@
+{
+  "version": "0.1.0",
+  "games": [
+    {
+      "id": "debug",
+      "name": "Debug",
+      "version": "0.1.0",
+      "description": "The server has a bug problem. You are the fix. Swat your way through a growing infestation, patch your agent, and keep the system clean.",
+      "genre": "First-person swatter",
+      "players": "1 player",
+      "status": "Playable",
+      "controls": [
+        "Mouse + keyboard",
+        "Xbox controller"
+      ],
+      "engine": "Godot 4.6.1",
+      "entry": "games/debug/play/",
+      "cover": "games/debug/cover.png",
+      "changes": "games/debug/CHANGES.json",
+      "accent": "#c9ee83",
+      "cover_alt": "A glowing amber bug among server racks, made in Blender"
+    }
+  ]
+}

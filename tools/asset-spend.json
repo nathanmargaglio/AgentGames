@@ -1,0 +1,76 @@
+[
+  {
+    "datetime": "2026-09-30T20:41:17.474296+00:00",
+    "model": "google/lyria-3-clip-preview",
+    "kind": "music",
+    "reserved_usd": 0.04,
+    "status": "complete",
+    "prompt": "Generate a 30-second instrumental loop for a playful first person bug-swatting game inside a computer server. Minimal electronic synth groove, 112 BPM, soft analog bass, tight quiet drums, curious plucked arpeggios in E minor, retro computer atmosphere. Light, focused and mischievous. No vocals, no speech, no dramatic introduction. Constant energy, clean loop-friendly ending.",
+    "generation_id": "gen-1790800877-FHZNDR4I5mrrSDm2FCJ4",
+    "usage": {
+      "prompt_tokens": 95,
+      "completion_tokens": 4,
+      "total_tokens": 99,
+      "cost": 0.04,
+      "is_byok": false,
+      "prompt_tokens_details": {
+        "cached_tokens": 0,
+        "cache_write_tokens": 0,
+        "audio_tokens": 0,
+        "video_tokens": 0
+      },
+      "cost_details": {
+        "upstream_inference_cost": 0.04,
+        "upstream_inference_prompt_cost": 0,
+        "upstream_inference_completions_cost": 0.04
+      },
+      "completion_tokens_details": {
+        "reasoning_tokens": 0,
+        "image_tokens": 0,
+        "audio_tokens": 4
+      }
+    },
+    "files": [
+      "music.ogg"
+    ],
+    "actual_account_delta_usd": 0.0
+  },
+  {
+    "datetime": "2026-09-30T20:47:33.983958+00:00",
+    "model": "google/lyria-3-clip-preview",
+    "kind": "effects",
+    "reserved_usd": 0.04,
+    "status": "complete",
+    "prompt": "Generate a sparse 30-second electronic sound-design percussion sample pack for a game. No vocals, no speech, no melody or background music. Begin immediately with a short crisp airy whoosh and plastic smack, then dry digital clicks, a squishy comic bug pop, and a bright ascending electronic success chime. Clearly isolated short one-shot sounds separated by silence, minimal background, playful computer bug-swatting effects.",
+    "generation_id": "gen-1790801254-j9WeOdKS3dCnMYhNXp46",
+    "usage": {
+      "prompt_tokens": 107,
+      "completion_tokens": 4,
+      "total_tokens": 111,
+      "cost": 0.04,
+      "is_byok": false,
+      "prompt_tokens_details": {
+        "cached_tokens": 0,
+        "cache_write_tokens": 0,
+        "audio_tokens": 0,
+        "video_tokens": 0
+      },
+      "cost_details": {
+        "upstream_inference_cost": 0.04,
+        "upstream_inference_prompt_cost": 0,
+        "upstream_inference_completions_cost": 0.04
+      },
+      "completion_tokens_details": {
+        "reasoning_tokens": 0,
+        "image_tokens": 0,
+        "audio_tokens": 4
+      }
+    },
+    "files": [
+      "swat.wav",
+      "hit.wav",
+      "clear.wav"
+    ],
+    "actual_account_delta_usd": 0.0
+  }
+]

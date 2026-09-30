@@ -1,0 +1,14 @@
+{
+  "name": "agentgames",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "setup": "python3 tools/setup.py",
+    "build": "python3 tools/build.py --all",
+    "check": "python3 tools/validate.py",
+    "test": "python3 tools/test.py",
+    "test:browser": "node tests/browser.mjs",
+    "serve": "python3 tools/serve.py"
+  },
+  "devDependencies": { "@playwright/test": "1.56.1" }
+}

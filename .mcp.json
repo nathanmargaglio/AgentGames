@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "agentgames": {
+      "command": "uv",
+      "args": ["run", "python", "tools/mcp_server.py"]
+    }
+  }
+}
