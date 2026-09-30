@@ -16,6 +16,7 @@ This repository is an agent-driven browser game playground. Treat `PROMPT.md` as
 - Publish to the browser. Use Web export preset `Web`, disable threads and extensions, and keep relative links working under `/AgentGames/`. GitHub Pages cannot supply custom isolation headers.
 - Support mouse/keyboard and an Xbox controller in gameplay and all menus unless the user explicitly makes an exception. Keep focus indicators and readable UI. Pause round timers when paused or focus is lost. Start audio after a player gesture.
 - Every game has `game.json`, `VERSION`, and a newest-first `CHANGES.json`. Show game versions and histories in the portal, not in game UI. The portal reads generated `web/catalog.json`.
+- The Game Portal uses a dark theme with lime accents. Preserve that palette and readable contrast for text, native controls, hover states, and keyboard focus when extending it.
 - Default future multiplayer to a small authoritative host with WebRTC and manual invitation/answer exchange. Read `docs/MULTIPLAYER.md`; direct peer connectivity is not guaranteed behind every NAT. Do not provision signaling, game servers, or relays without a concrete approved need.
 
 ## Assets and spending

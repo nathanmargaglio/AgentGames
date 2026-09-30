@@ -25,6 +25,8 @@ python3 tools/serve.py --port 8765
 
 Setup installs npm dependencies from `package-lock.json`, MCP dependencies from `uv.lock`, the pinned Chromium archive, and `core.hooksPath=tools/hooks`. The Python Chromium installer avoids a download/extraction hang observed with Playwright's installer under Node 26. Browser tests use the full Chromium executable with software WebGL; no display or GPU is required. Screenshots stay in ignored `artifacts/`.
 
+Setup can be rerun: cached archives are verified, and an unchanged Godot executable is reused instead of overwritten. This avoids Linux's `Text file busy` error if the installed engine is running.
+
 `GODOT_BIN` and `BLENDER_BIN` can override tool paths. On other operating systems, install the pinned versions manually, install matching export templates, use `npm ci`, `npx playwright install chromium --no-shell`, and `uv sync --frozen`, then configure the hooks. The automated binary installer supports Linux x86-64.
 
 ## Headless authoring
@@ -36,6 +38,10 @@ python3 tools/build.py --game debug --assets
 ```
 
 Blender creates the native `art/models.blend`, optimized GLB models, and the portal cover. Godot imports GLB rather than `.blend`, keeping exports independent of Blender import subprocesses. Godot uses GDScript, Compatibility rendering, and a single-threaded Web preset, which works on GitHub Pages without cross-origin isolation headers. [Godot web export documentation](https://docs.godotengine.org/en/stable/tutorials/export/exporting_for_web.html).
+
+The initial local and deployed Chromium checks passed for the portal, mobile portal layout, release history/pagination, WebGL loading, mouse/keyboard play, scoring, pause/resume, and an emulated standard Xbox gamepad's menus, sticks, and RT. Physical controller hardware and other browser engines have not been tested by this automation.
+
+In the pinned Godot version, the default `ui_accept` action did not include controller A. Debug explicitly maps controller A to menu confirmation; new games should verify menu mappings rather than assuming the defaults. Controller starts keep the mouse visible, while mouse/keyboard starts capture it through a player gesture. The native headless test fixture stops audio and clears its stream references before teardown to avoid resource-leak errors from active playback.
 
 ## MCP
 

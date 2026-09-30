@@ -6,6 +6,8 @@ Work on feature branches or isolated Git worktrees. Keep each game's source and 
 
 A build imports Godot resources, exports to a temporary directory, installs the finished files in `games/<slug>/play/`, and records source and output hashes in `build.json`. Unchanged games are skipped. Blender assets regenerate when their generator changes. Use `--force` to export anyway or `--assets` to regenerate the game's Blender assets. Build tools and toolchain pins participate in source fingerprints. `.godot/`, paid generation intermediates, and testing artifacts stay local.
 
+Godot adds trailing blank lines to exported HTML. The build step normalizes its final newline before recording hashes, so generated HTML passes the release's whitespace check. Make any export normalization changes in the build tool and rebuild rather than editing a committed export manually.
+
 Each game's `game.json` provides its ID, version, name, description, genre, player count, supported controls, cover, history path, and browser entry. The generated `web/catalog.json` exposes this metadata to the portal. Each game also has `VERSION` and newest-first `CHANGES.json`; entries contain `version`, timezone-qualified `datetime`, and `description`.
 
 ## Publish
@@ -32,6 +34,8 @@ GitHub Pages serves `main` from the root. All browser exports are committed with
 ```sh
 AGENTGAMES_TEST_URL=https://nathanmargaglio.github.io/AgentGames/ npm run test:browser
 ```
+
+The initial release deployed successfully through GitHub's existing Pages workflow. The live catalog, history, and build stamp matched the committed files, and the full browser checks passed against the deployed site. For future releases, wait for the Pages run for the new commit to succeed before verifying the live version; a successful Git push alone does not establish deployment completion.
 
 ## Add or branch a game
 

@@ -1,5 +1,10 @@
 [
   {
+    "version": "0.1.1",
+    "datetime": "2026-09-30T21:26:55.173450+00:00",
+    "description": "Give the Game Portal a dark theme and document setup, controller, and deployment findings"
+  },
+  {
     "version": "0.1.0",
     "datetime": "2026-09-30T21:12:36.574947+00:00",
     "description": "Launch AgentGames with a game portal, paginated release history, reproducible headless Godot and Blender tools, and the first playable game, Debug."
