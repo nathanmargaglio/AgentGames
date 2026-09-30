@@ -9,6 +9,7 @@ This repository is an agent-driven browser game playground. Treat `PROMPT.md` as
 - Keep source, editable Blender libraries, and game-specific asset generators together. Import GLB files in Godot; ignore `art/`, `web/`, `tests/`, and `play/` with `.gdignore`.
 - Use `python3 tools/build.py --game <slug>` after changes. Use `--assets` when the Blender generator changes. Never edit exported files directly; change their source, including the custom HTML shell, and rebuild.
 - For browser tests use `npm run test:browser`; screenshots go to ignored `artifacts/`. Test actual gameplay rules with headless checks where useful. Do not mistake a successful Godot process exit for clean import/parse output.
+- Local HTTP/HTTPS servers are temporary development and test tools. Stop agent-started test servers when testing is complete. Players use the published GitHub Pages URL; multiplayer must not require them to run a local server.
 - Feature branches and Git worktrees are welcome for experiments. Ask for parallel agents only when the user wants delegation; do not spawn them by default.
 
 ## Game defaults
@@ -27,9 +28,10 @@ This repository is an agent-driven browser game playground. Treat `PROMPT.md` as
 
 ## Versions and publishing
 
+- Publish every finished, user-requested project update by default: rebuild, validate, test, commit, push `main` and the annotated version tags, then verify GitHub Pages before reporting completion. This is standing authorization; do not ask for separate push/deploy confirmation. Keep work local only when the user explicitly requests a draft, experiment, or no push.
 - Every published AgentGames change, including documentation/shared tooling, needs an appropriate semver bump and a `CHANGES.json` entry with version, timezone-qualified datetime, and short description. Changed games also need independent bumps/history entries.
 - From `main`, use `python3 tools/release.py --bump patch --game debug:patch --message "Describe the change" --push`, adjusting bump kinds and games. The release helper rebuilds, validates, tests, commits, tags, and pushes atomically. Include only intentional project work; it stages all nonignored files.
 - Rebuild every changed game BEFORE pushing. Commit complete exports in `games/<slug>/play/`; no GitHub compilation. The root portal is `index.html`, and Pages serves `main` at `/`.
 - Push annotated `v<AgentGames version>` and `<game>/v<game version>` tags alongside releases. Never move published tags or force push. The local `tools/hooks/pre-push` gate catches stale builds and missing bumps/tags; keep it enabled.
 - Initialization is version `0.1.0` for AgentGames and Debug. Unpublished iteration can share the pending release version. Once released, use a new version for the next publication.
-- Check `git diff` and build/test results before release. After pushing, verify the Pages deployment and live portal version. Report the URL, versions/tags, validation, spend, and any material limitations. Publishing is authorized when the user asks to deploy/push; avoid repeated permission requests.
+- Check `git diff` and build/test results before release. After pushing, verify the Pages deployment and live portal version. Report the URL, versions/tags, validation, spend, and any material limitations. A local build alone does not complete a finished update; publish it under the standing authorization above.

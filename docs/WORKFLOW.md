@@ -12,6 +12,8 @@ Each game's `game.json` provides its ID, version, name, description, genre, play
 
 ## Publish
 
+Publish finished, user-requested updates by default under the standing authorization in `AGENTS.md`. Rebuild, test, commit, push `main` with its annotated version tags, and verify the Pages deployment before reporting completion. Ask no separate publishing confirmation; keep work local only when the user explicitly requests it.
+
 Before publishing, finish the implementation and merge it locally into `main`. Run from the root:
 
 ```sh
@@ -23,7 +25,7 @@ python3 tools/release.py --bump minor --game debug:minor \
   --message "Add a new bug type" --push
 ```
 
-Repeat `--game slug:kind` for multiple updated games. Semver bumps are `patch` for fixes, `minor` for new compatible features, and `major` for breaking changes; versions below 1.0 indicate experiments. The command updates versions and histories, builds changed games, refreshes the catalog, checks all build hashes, runs headless and browser tests, commits all nonignored project changes, creates annotated tags, and optionally pushes `main` plus those tags atomically. Omit `--push` to prepare a local tagged release.
+Repeat `--game slug:kind` for multiple updated games. Semver bumps are `patch` for fixes, `minor` for new compatible features, and `major` for breaking changes; versions below 1.0 indicate experiments. The command updates versions and histories, builds changed games, refreshes the catalog, checks all build hashes, runs headless and browser tests, commits all nonignored project changes, creates annotated tags, and pushes `main` plus those tags atomically when passed `--push`. Include `--push` for finished updates. Omit it only for a local release explicitly requested by the user.
 
 AgentGames tags are `v0.1.0`; game tags are `debug/v0.1.0`. A shared release always has a new AgentGames tag. Changed games have new game tags. Never move a published tag. If the push fails after local preparation, fix the cause, then push the already-created commit and tags together; do not rerun the bump blindly.
 

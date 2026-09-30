@@ -1,4 +1,5 @@
 import {chromium} from '@playwright/test';
+import {testCoop} from './browser-coop.mjs';
 import {spawn} from 'node:child_process';
 import {mkdir} from 'node:fs/promises';
 import assert from 'node:assert/strict';
@@ -99,7 +100,25 @@ try {
   await padPage.waitForFunction(()=>window.agentgamesState?.mode==='paused');
   await padPage.evaluate(()=>window.padButton(0,true));await delay(300);await padPage.evaluate(()=>window.padButton(0,false));
   await padPage.waitForFunction(()=>window.agentgamesState?.mode==='playing');
+  // Xbox also selects Host co-op and navigates/cancels the native pairing controls.
+  async function pulsePad(index) {
+    await padPage.evaluate(index=>window.padButton(index,true),index); await delay(180);
+    await padPage.evaluate(index=>window.padButton(index,false),index); await delay(180);
+  }
+  await pulsePad(9); await padPage.waitForFunction(()=>window.agentgamesState?.mode==='paused');
+  await pulsePad(13); await pulsePad(13); await pulsePad(0);
+  await padPage.waitForFunction(()=>window.agentgamesState?.mode==='over');
+  await pulsePad(13); await pulsePad(0);
+  await padPage.waitForFunction(()=>window.agentgamesState?.mode==='title');
+  await pulsePad(13); await pulsePad(0);
+  await padPage.waitForFunction(()=>window.agentgamesState?.mode==='lobby');
+  const beforeFocus = await padPage.evaluate(()=>document.activeElement.id);
+  await pulsePad(13);
+  assert.notEqual(await padPage.evaluate(()=>document.activeElement.id),beforeFocus,'Xbox navigates pairing controls');
+  await pulsePad(1); await padPage.waitForFunction(()=>window.agentgamesState?.mode==='title');
+  console.log('Browser: Xbox co-op menus pass');
   await padContext.close();
+  await testCoop(browser,base,errors);
   assert.deepEqual(errors,[],`Browser errors: ${errors.join('\n')}`);
-  console.log('Browser checks: PASS (portal, mobile layout, histories, pagination, WebGL, keyboard/mouse, swatting, pause, emulated Xbox menu/sticks/RT).');
+  console.log('Browser checks: PASS (portal, mobile layout, histories, pagination, WebGL, keyboard/mouse, swatting, pause, emulated Xbox menu/sticks/RT, two-player WebRTC co-op).');
 } finally {await browser?.close();server?.kill();}

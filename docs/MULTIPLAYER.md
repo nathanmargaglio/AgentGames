@@ -1,9 +1,35 @@
-# Browser multiplayer defaults
+# Browser co-op
 
-Debug's initial release is solo. Future online games should start with one authoritative host and direct WebRTC data channels between invited browsers. Keep rooms small, synchronize only the state needed for the game, and avoid discovery accounts, matchmaking, and a hosted game server until they solve a concrete need.
+Debug supports solo play and one host plus one guest. Both players open the browser game from the Game Portal. The host runs the arena; the guest sends movement and swat inputs over a direct Godot WebRTC data channel. There is no account, matchmaking, signaling server, or gameplay server.
 
-Browsers cannot listen for arbitrary incoming TCP/UDP connections. They must exchange WebRTC session descriptions and ICE candidates before connecting. The first implementation can use a manual offer/answer code exchange through an existing chat: host copies an invitation, guest pastes it and returns an answer. Gather ICE candidates before producing each code so a signaling service is unnecessary. A public STUN service can help peers find their public addresses; it does not host gameplay. Use Godot's `WebRTCPeerConnection`, `WebRTCDataChannel`, or `WebRTCMultiplayerPeer` in browser exports. [Godot WebRTC documentation](https://docs.godotengine.org/en/stable/tutorials/networking/webrtc.html).
+Published play uses [GitHub Pages](https://nathanmargaglio.github.io/AgentGames/). Neither player needs to run a local server. Local HTTP/HTTPS serving is only for pre-publication development and testing; stop it afterward. GitHub Pages serves the client files, and the host player's browser runs the shared game simulation.
 
-Some NATs, firewalls, and enterprise networks cannot establish a direct connection. Reliable support for those networks requires a TURN relay, which carries traffic and has a cost. Show a clear connection failure and retry option initially; propose relay hosting and its budget before adding it. Do not promise universal connectivity without a relay. Native headless WebRTC tests require Godot's separate native WebRTC extension, while browser builds include WebRTC support.
+## Connect two agents
 
-Treat guest data as untrusted. The host decides scores, round transitions, upgrades, and valid actions. Use bounded packet sizes and rates; handle disconnects and host departure explicitly. Manual connection codes can contain network addresses, so exchange them privately. GitHub Pages only delivers static client files and will not become a signaling or gameplay server.
+1. The host selects **Host co-op** and waits for the invitation to finish gathering network addresses.
+2. Select **Copy invitation link** and send it privately to the guest. The guest opens it. Alternatively, the guest selects **Join co-op**, pastes the invitation code or link, and selects **Use code**.
+3. The guest selects **Copy code** and sends their **answer code** back to the host.
+4. The host pastes that answer and selects **Use code**. Both screens should show **Connected**.
+5. The guest selects **Ready to play** to enable audio. The host selects **Start co-op run**.
+
+Use **Network addresses & connection help** to inspect the addresses gathered by the browser. IPs/ports are bundled in the codes, so there is nothing to type manually. Browsers may substitute `.local` hostnames for private IPs. Invitations use a URL fragment, which is removed after reading and is not sent to the static web server. Codes are specific to that session; create a fresh invitation after a disconnect or retry.
+
+For a first test, use two computers on the same Wi-Fi and open the deployed Game Portal on each. To test an unpublished local build, run `python3 tools/serve.py --lan --port 8765` from the repository root. It generates a temporary local HTTPS certificate and prints LAN URLs containing this computer's IP. Open the same HTTPS LAN URL on both computers and accept the local self-signed certificate warning in each test browser. Godot requires a secure context, so plain HTTP IP-address links cannot run the game. The certificate's private key stays outside the served repository and is deleted on normal shutdown. The static-file server is only needed to load the game, while gameplay still uses WebRTC. Your local firewall must allow that HTTPS port. If clipboard permission is unavailable, select/copy and paste the codes manually instead. Two separate browser windows also work on one computer, but switching focus pauses the team. Keyboard Tab/Enter and Xbox D-pad/stick/A/B navigate the pairing screen; clipboard buttons support controller users when browser clipboard permissions allow it. Manual text exchange can still require the keyboard or another application.
+
+## Shared game loop
+
+Each agent has a visible avatar, separate spawn point, and independent swat cooldown. The host controls player movement limits, bug health, hits, score, round timers, and upgrades. Bugs chase the nearer agent. Co-op has 50% more bugs (nine in round one, capped at 42), with the same timer budget per original solo wave. The HUD shows team score and each player's kills. Clearing the arena opens a shared upgrade screen; the host picks one upgrade for both agents. The host can restart the run for both.
+
+Either player can pause. Focus loss also pauses the team. Each paused player must resume before the clock continues; a host cannot resume a guest who is still paused. A missing guest input heartbeat pauses the host. Disconnecting either browser stops the run with retry/back options, rather than silently turning it into a solo game.
+
+## Network limits
+
+Browsers cannot listen for arbitrary incoming TCP/UDP connections. They exchange WebRTC session descriptions and ICE candidates before connecting. Debug gathers candidates before generating each invitation/answer, allowing private manual exchange without a signaling service. A public STUN service (`stun:stun.l.google.com:19302`) helps discover addresses and does not carry gameplay. [Godot WebRTC documentation](https://docs.godotengine.org/en/4.6/tutorials/networking/webrtc.html).
+
+Some NATs, firewalls, and enterprise networks cannot establish a direct connection. Debug reports failure/timeout and offers retry. Try the same Wi-Fi or another network. Reliable support for those networks would require a TURN relay with an approved hosting/budget decision; none is configured. GitHub Pages only delivers static files.
+
+Guest messages cannot set scores, positions, round transitions, or upgrades. The host bounds movement, validates reach/aim/line of sight, and enforces independent cooldowns. Codes and packets have size limits, incoming packets have a rate limit, and outgoing snapshots have a bounded queue. This is a small testing implementation with local guest movement prediction and host correction, without production latency compensation or matchmaking.
+
+## Validation
+
+`npm run test:browser` connects two independent Chromium clients using real invitation/answer codes and WebRTC, then exercises both agents' real movement/swat input, shared upgrades, pause, focus loss, and disconnect/retry. Headless gameplay checks cover authority, cooldowns, collision, invalid input, timer expiry, and synchronized restart; they simulate the transport because native headless WebRTC needs a separate Godot extension. Physical controllers, other browser engines, and connections across separate real networks still require manual testing.

@@ -2,14 +2,14 @@
 
 Tested on Ubuntu 24.04 x86-64. The project pins Godot 4.6.1, its matching web export templates, and Blender 4.5.3 LTS in `tools/toolchain.json`. Archive SHA-256 hashes are recorded there and checked during setup. Tools install in `~/.local/share/agentgames`; symlinks go in `~/.local/bin`. No sudo is required on this machine.
 
-Prerequisites: Python 3.12+, Node.js/npm, Git, curl, ffmpeg, and uv. These were already available on the initialization machine. On a fresh Ubuntu installation:
+Prerequisites: Python 3.12+, Node.js/npm, Git, curl, ffmpeg, OpenSSL (for LAN HTTPS tests), and uv. These were already available on the initialization machine. On a fresh Ubuntu installation:
 
 ```sh
 sudo apt-get update
 sudo apt-get install -y python3 curl git ffmpeg unzip xz-utils libx11-6 libxi6 \
   libxrender1 libxxf86vm1 libxkbcommon0 libgl1 libegl1 libnss3 libatk1.0-0 \
   libatk-bridge2.0-0 libatspi2.0-0 libdrm2 libgbm1 libasound2t64 \
-  libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libcups2
+  libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libcups2 openssl
 ```
 
 Install Node.js and uv using their official installers if missing. Then, from the repository root:

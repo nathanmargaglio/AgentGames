@@ -120,6 +120,170 @@ $GODOT_HEAD_INCLUDE
 			<div id="status-notice"></div>
 		</div>
 
+		<script>
+/* Native browser controls for private, server-free WebRTC pairing. Transport is in coop.gd. */
+(() => {
+  const style = document.createElement('style');
+  style.textContent = `
+#coop-lobby[hidden] { display:none }
+#coop-lobby { position:fixed; inset:0; z-index:10; background:#081614ee; overflow:auto; color:#ecf0e5; padding:70px 20px 24px; box-sizing:border-box }
+#coop-panel { max-width:660px; margin:0 auto; background:#142a29; border:1px solid #547168; border-radius:18px; padding:24px }
+#coop-panel h1 { margin:6px 0 14px; font-size:36px; letter-spacing:-1px }
+#coop-panel p { line-height:1.5; margin:10px 0; color:#b1c7be }
+#coop-panel .kicker, #coop-status { color:#c9ee83; font-size:14px }
+#coop-panel label { display:block; margin:16px 0 8px; font-weight:600 }
+#coop-panel textarea { display:block; width:100%; box-sizing:border-box; resize:vertical; min-height:80px; max-height:180px; background:#081c1a; color:#ecf0e5; border:1px solid #78948a; border-radius:7px; padding:10px; font:12px/1.4 monospace }
+#coop-panel button { color:#ecf0e5; background:#24423d; border:1px solid #78948a; border-radius:7px; padding:12px 15px; font:600 15px system-ui; cursor:pointer; min-height:44px }
+#coop-panel button:hover { background:#34574d }
+#coop-panel button.primary { color:#10201f; background:#c9ee83 }
+#coop-panel button:disabled { opacity:.5; cursor:wait }
+#coop-panel :focus-visible { outline:3px solid #ecf0e5; outline-offset:3px }
+#coop-panel .row { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0 }
+#coop-panel .small { font-size:13px }
+#coop-addresses { font:12px/1.5 monospace; white-space:pre-wrap; overflow-wrap:anywhere; color:#b1c7be }
+#coop-panel details { margin:16px 0 }
+#coop-panel summary { cursor:pointer; color:#c9ee83 }
+`;
+  document.head.append(style);
+  const lobby = document.createElement('section');
+  lobby.id = 'coop-lobby';
+  lobby.hidden = true;
+  lobby.setAttribute('aria-labelledby', 'coop-heading');
+  lobby.innerHTML = `<div id="coop-panel">
+    <div class="kicker">AGENT OPERATIONS / TWO-PLAYER CO-OP</div>
+    <h1 id="coop-heading">Connect your agents.</h1>
+    <p id="coop-instructions"></p>
+    <p id="coop-status" role="status" aria-live="polite"></p>
+    <div id="coop-output-group">
+      <label for="coop-output" id="coop-output-label">Your invitation code</label>
+      <textarea id="coop-output" readonly spellcheck="false" aria-describedby="coop-privacy"></textarea>
+      <div class="row"><button id="coop-copy-link">Copy invitation link</button><button id="coop-copy">Copy code</button></div>
+    </div>
+    <div id="coop-input-group">
+      <label for="coop-input" id="coop-input-label">Teammate's code</label>
+      <textarea id="coop-input" maxlength="32768" spellcheck="false" autocomplete="off"></textarea>
+      <div class="row"><button id="coop-paste">Paste from clipboard</button><button class="primary" id="coop-connect">Use code</button></div>
+    </div>
+    <p id="coop-copy-note" class="small" role="status"></p>
+    <details><summary>Network addresses & connection help</summary>
+      <pre id="coop-addresses">Gathering network addresses…</pre>
+      <p class="small">Addresses are already included in the codes; there is no IP or port to enter. Browsers may hide local IPs as .local names. A public STUN service helps discover addresses; gameplay travels directly between you.</p>
+      <p class="small">Start with two computers on the same Wi-Fi. Both can open the game from the Game Portal. Some firewalls or routers block direct connections; try another network if pairing times out. This test has no TURN relay.</p>
+    </details>
+    <p class="small" id="coop-privacy">Share codes privately with your teammate; they can include network addresses. Keep both game windows open. The host starts the run and picks shared upgrades. Either agent can pause the team clock.</p>
+    <div class="row"><button class="primary" id="coop-ready" hidden>Ready to play →</button><button class="primary" id="coop-start" hidden>Start co-op run →</button><button id="coop-retry" hidden>Create a fresh session</button><button id="coop-leave">Back to briefing</button></div>
+    <p class="small">Xbox: D-pad / left stick selects · A activates · B goes back. Use the clipboard buttons to exchange codes.</p>
+  </div>`;
+  document.body.append(lobby);
+  const el = id => document.getElementById(id);
+  let role = 'host', code = '', commands = [], invitation = '';
+  const enqueue = command => { if (commands.length < 8) commands.push(command); };
+  function focusLost() {
+    if (['playing','paused'].includes(window.agentgamesState?.mode)) enqueue({type:'focus_lost'});
+  }
+  window.addEventListener('blur', focusLost);
+  el('canvas').addEventListener('blur', focusLost);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) focusLost(); });
+  function parseCode(value) {
+    value = value.trim();
+    if (value.length > 65536) throw new Error('Code is too long. Copy it again.');
+    if (/^https?:\/\//.test(value)) value = atob(new URL(value).hash.slice(8));
+    if (value.length > 32768) throw new Error('Code is too long. Copy it again.');
+    return value;
+  }
+  try {
+    if (location.hash.startsWith('#invite=')) {
+      invitation = parseCode(location.href);
+      // Remove the private code from the URL/history after reading it.
+      history.replaceState(null, '', location.pathname + location.search);
+      enqueue({type:'guest'});
+      enqueue({type:'code',code:invitation});
+    }
+  } catch { invitation = ''; }
+  window.debugLobby = {
+    show(kind) {
+      role = kind; code = ''; lobby.hidden = false;
+      el('coop-heading').textContent = kind === 'host' ? 'Host a co-op session.' : 'Join your teammate.';
+      el('coop-instructions').textContent = kind === 'host'
+        ? '1. Send your invitation link or code to your teammate. 2. Paste their answer below. 3. Start when both agents are connected.'
+        : '1. Paste the host’s invitation below, or open their link. 2. Send your answer code back to them. 3. Wait for the host to start.';
+      el('coop-output-label').textContent = kind === 'host' ? '1 / Your invitation code' : '2 / Your answer code — send this back to the host';
+      el('coop-input-label').textContent = kind === 'host' ? '2 / Paste the guest’s answer' : '1 / Paste the host’s invitation code or link';
+      el('coop-input').value = kind === 'guest' ? invitation : '';
+      el('coop-output').value = '';
+      el('coop-copy-note').textContent = '';
+      el('coop-output-group').hidden = false;
+      el('coop-input-group').hidden = false;
+      el('coop-copy-link').hidden = kind !== 'host';
+      el('coop-start').hidden = true;
+      el('coop-ready').hidden = true;
+      el('coop-retry').hidden = true;
+      el('coop-connect').disabled = false;
+      el('coop-connect').focus();
+    },
+    hide() { lobby.hidden = true; el('canvas').focus(); },
+    update(raw) {
+      const state = JSON.parse(raw); code = state.code;
+      el('coop-output').value = code;
+      el('coop-status').textContent = state.notice;
+      el('coop-addresses').textContent = state.addresses;
+      el('coop-copy').disabled = !code;
+      el('coop-copy-link').disabled = !code;
+      el('coop-start').hidden = !state.connected || role !== 'host';
+      el('coop-start').disabled = !state.ready;
+      el('coop-ready').hidden = !state.connected || role !== 'guest' || state.ready;
+      el('coop-retry').hidden = !state.failed;
+      el('coop-input-group').hidden = state.connected;
+      el('coop-output-group').hidden = state.connected;
+      if (state.connected) {
+        el('coop-copy-note').textContent = role === 'host' ? (state.ready ? 'Your teammate is ready. Start the run.' : 'Waiting for your teammate to press Ready to play.') : (state.ready ? 'Ready. Waiting for the host to start the run.' : 'Press Ready to play to enable audio and join the run.');
+        (role === 'host' ? (state.ready ? el('coop-start') : el('coop-leave')) : (state.ready ? el('coop-leave') : el('coop-ready'))).focus();
+      }
+    },
+    take() { const pending = commands; commands = []; return pending.length ? JSON.stringify(pending) : ''; }
+  };
+  async function copy(value) {
+    try { await navigator.clipboard.writeText(value); el('coop-copy-note').textContent = 'Copied. Send it to your teammate.'; }
+    catch {
+      el('coop-output').value = value; el('coop-output').focus(); el('coop-output').select();
+      el('coop-copy-note').textContent = document.execCommand('copy') ? 'Copied. Send it to your teammate.' : 'Code selected. Press Ctrl+C / Cmd+C to copy.';
+    }
+  }
+  el('coop-copy').onclick = () => copy(code);
+  el('coop-copy-link').onclick = () => copy(new URL(location.pathname, location.origin).href + '#invite=' + btoa(code));
+  el('coop-paste').onclick = async () => {
+    try { el('coop-input').value = await navigator.clipboard.readText(); }
+    catch { el('coop-input').focus(); el('coop-copy-note').textContent = 'Clipboard access blocked. Paste with Ctrl+V / Cmd+V in the code field.'; }
+  };
+  el('coop-connect').onclick = () => {
+    try { enqueue({type:'code', code:parseCode(el('coop-input').value)}); }
+    catch (error) { el('coop-copy-note').textContent = error.message; }
+  };
+  el('coop-ready').onclick = () => enqueue({type:'ready'});
+  el('coop-start').onclick = () => enqueue({type:'start'});
+  el('coop-retry').onclick = () => enqueue({type:role});
+  el('coop-leave').onclick = () => enqueue({type:'leave'});
+  // Navigate native pairing controls using the same standard Xbox gamepad as Godot.
+  let lastA = false, lastB = false, nextMove = 0;
+  setInterval(() => {
+    const pad = [...(navigator.getGamepads?.() || [])].find(p => p?.connected);
+    if (!pad) return;
+    const a = pad.buttons[0]?.pressed, b = pad.buttons[1]?.pressed;
+    if (!lobby.hidden) {
+      const controls = [...lobby.querySelectorAll('button,textarea,summary')].filter(e => !e.disabled && e.getClientRects().length);
+      const direction = pad.buttons[13]?.pressed || pad.buttons[15]?.pressed || pad.axes[1] > .6 ? 1
+        : pad.buttons[12]?.pressed || pad.buttons[14]?.pressed || pad.axes[1] < -.6 ? -1 : 0;
+      if (direction && performance.now() > nextMove) {
+        let index = controls.indexOf(document.activeElement);
+        controls[(index + direction + controls.length) % controls.length]?.focus(); nextMove = performance.now() + 250;
+      }
+      if (a && !lastA) document.activeElement?.click();
+      if (b && !lastB) enqueue({type:'leave'});
+    }
+    lastA = a; lastB = b;
+  }, 80);
+})();
+		</script>
 		<script src="$GODOT_URL"></script>
 		<script>
 document.getElementById('fullscreen').addEventListener('click', () => {

@@ -1,5 +1,10 @@
 [
   {
+    "version": "0.2.0",
+    "datetime": "2026-09-30T22:41:03.121775+00:00",
+    "description": "Add two-player Debug co-op with direct WebRTC pairing and publish finished updates to Pages by default"
+  },
+  {
     "version": "0.1.1",
     "datetime": "2026-09-30T21:26:55.173450+00:00",
     "description": "Give the Game Portal a dark theme and document setup, controller, and deployment findings"

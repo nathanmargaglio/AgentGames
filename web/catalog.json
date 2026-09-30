@@ -1,13 +1,13 @@
 {
-  "version": "0.1.1",
+  "version": "0.2.0",
   "games": [
     {
       "id": "debug",
       "name": "Debug",
-      "version": "0.1.0",
-      "description": "The server has a bug problem. You are the fix. Swat your way through a growing infestation, patch your agent, and keep the system clean.",
+      "version": "0.2.0",
+      "description": "The server has a bug problem. Swat through timed waves solo or with a teammate, pick shared upgrades, and keep the system clean.",
       "genre": "First-person swatter",
-      "players": "1 player",
+      "players": "1\u20132 players",
       "status": "Playable",
       "controls": [
         "Mouse + keyboard",

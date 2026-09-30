@@ -1,5 +1,10 @@
 [
   {
+    "version": "0.2.0",
+    "datetime": "2026-09-30T22:41:03.145153+00:00",
+    "description": "Add two-player Debug co-op with direct WebRTC pairing and publish finished updates to Pages by default"
+  },
+  {
     "version": "0.1.0",
     "datetime": "2026-09-30T21:12:36.574947+00:00",
     "description": "First playable release: a Blender-built server room and bug models, first-person swatting, timed escalating rounds, three agent upgrades, local high scores, Xbox controls, and OpenRouter-generated music and effects."

@@ -77,6 +77,101 @@ func test_game() -> void:
 		for event in InputMap.action_get_events(name_):
 			if event is InputEventJoypadButton or event is InputEventJoypadMotion:has_joy = true
 		expect(has_joy,"Controller action missing: "+name_)
+	# Headless authority checks exercise the co-op rules without a native WebRTC extension.
+	game.set_process(false)
+	game.coop.role = "host"
+	game.coop.online = true
+	game.create_teammate()
+	game.start_run()
+	expect(game.bugs.size() == 6,"Co-op waits for guest readiness")
+	game.peer_ready = true
+	game.start_run()
+	game.set_physics_process(false)
+	expect(game.bugs.size() == 9 and is_equal_approx(game.round_duration,41.8),"Co-op scales bugs, retaining the first-round clock")
+	expect(game.player.position.x != game.teammate.position.x,"Agents spawn separately")
+	var guest = load("res://src/main.tscn").instantiate()
+	root.add_child(guest)
+	await process_frame
+	guest.set_physics_process(false)
+	guest.set_process(false)
+	guest.coop.role = "guest"
+	guest.coop.online = true
+	guest.create_teammate()
+	guest.apply_snapshot(game.snapshot())
+	expect(guest.bugs.size() == 9 and guest.mode == "playing","Guest receives the authoritative arena")
+	game.receive_packet({"type":"state","score":999999})
+	game.receive_packet({"type":"upgrade","index":0})
+	expect(game.score == 0 and game.power == 1,"Guest cannot choose scores or upgrades")
+	game.receive_packet({"type":"input","move":[INF,0],"yaw":0,"pitch":0})
+	expect(game.teammate_input.is_empty(),"Nonfinite guest input is rejected")
+	game.receive_packet({"type":"input","move":[100,100],"yaw":0,"pitch":100,"paused":false,"serial":0,"ready":true})
+	expect(game.teammate_input.move.length() <= 1.001 and game.teammate_pitch <= 1.25,"Guest movement and pitch are bounded")
+	game.receive_packet({"type":"input","move":[1e100,-1e100],"yaw":0,"pitch":0,"ready":true})
+	expect(game.teammate_input.move.is_finite() and game.teammate_input.move.length() <= 1.001,"Huge finite input cannot overflow the movement vector")
+	game.teammate_pitch = 0
+	game.teammate_input = {}
+	var remote_bug = game.bugs[0]
+	remote_bug.position = game.teammate.position + Vector3(0,0.65,-2)
+	for other in game.bugs:
+		if other != remote_bug: other.position = Vector3(3,1,-8)
+	await physics_frame
+	game.receive_packet({"type":"swat"})
+	game.step_teammate(0.01)
+	expect(game.score == 125 and game.team_kills == [0,1],"Guest swat is validated and credited by host")
+	game.bugs[0].position = game.teammate.position + Vector3(0,0.65,-2)
+	game.receive_packet({"type":"swat"})
+	game.step_teammate(0.01)
+	expect(game.score == 125,"Guest swat spam respects its own cooldown")
+	game.teammate_cooldown = 0
+	var remote_wall = game.box(game.teammate.position + Vector3(0,0.65,-1),Vector3(2,3,.2),Color.GRAY,true)
+	await physics_frame
+	game.receive_packet({"type":"swat"})
+	game.step_teammate(0.01)
+	expect(game.score == 125,"Guest swats respect wall collision")
+	remote_wall.queue_free()
+	await physics_frame
+	for target in game.bugs.duplicate():
+		target.position = game.camera.global_position + Vector3(0,0,-2)
+		game.cooldown = 0
+		await physics_frame
+		game.attack()
+	guest.apply_snapshot(game.snapshot())
+	expect(guest.mode == "upgrade" and guest.score == game.score and guest.team_kills == game.team_kills,"Both agents see a single score and round completion")
+	guest.apply_upgrade(0)
+	expect(guest.wave == 1 and guest.power == 1,"Only host may select the shared upgrade")
+	game.apply_upgrade(0)
+	game.set_physics_process(false)
+	guest.apply_snapshot(game.snapshot())
+	expect(guest.wave == 2 and guest.power == 2 and guest.bugs.size() == 12,"Host upgrade and next wave reach both agents")
+	game.pause_game()
+	game.accept_pause({"paused":true,"serial":1})
+	game.resume_play()
+	expect(game.mode == "paused","Host cannot resume a guest that is paused")
+	var team_time: float = game.remaining
+	game._physics_process(1.0)
+	expect(game.remaining == team_time,"Shared pause stops timer and bugs")
+	game.accept_pause({"paused":false,"serial":2})
+	expect(game.mode == "playing","Both agents ready resumes the shared clock")
+	game.accept_pause({"paused":true,"serial":1})
+	expect(game.mode == "playing","Old pause packets cannot undo a resume")
+	game._notification(Node.NOTIFICATION_APPLICATION_FOCUS_OUT)
+	expect(game.mode == "paused" and game.local_paused,"Host focus loss pauses co-op")
+	game.resume_play()
+	game.remaining = 0.01
+	game._physics_process(0.1)
+	guest.apply_snapshot(game.snapshot())
+	expect(game.mode == "over" and guest.mode == "over","Round timeout ends the same run for both agents")
+	game.start_run()
+	game.set_physics_process(false)
+	guest.apply_snapshot(game.snapshot())
+	expect(guest.mode == "playing" and guest.wave == 1 and guest.score == 0 and guest.power == 1,"Host restart resets both players")
+	game.coop.fail("Test disconnect")
+	expect(game.mode == "disconnected","Disconnect stops co-op with retry choices")
+	for stream in [guest.music,guest.swat_sound,guest.hit_sound,guest.clear_sound]:
+		stream.stop()
+		stream.stream = null
+	root.remove_child(guest)
+	guest.queue_free()
 	await create_timer(0.3).timeout
 	for stream in [game.music,game.swat_sound,game.hit_sound,game.clear_sound]:
 		stream.stop()
